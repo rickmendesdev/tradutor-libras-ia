@@ -5,15 +5,19 @@ import time
 import cv2
 import numpy as np
 
+# Reutiliza o detector, a extracao de coordenadas e os desenhos do modulo compartilhado.
 from landmarks import Detector, extrair_coordenadas, desenhar_maos, desenhar_corpo
 
 # --- 1. CONFIGURACOES DO DATASET ---
 # TROQUE no PC de cada um (ex.: o nome do seu amigo). Vai no nome dos arquivos.
-PESSOA = "izanagi"
+PESSOA = "rick"
 PASTA_DADOS = "dados_libras"
 # TROQUE pelos sinais que voces validaram
-ACOES = ['feliz', 'triste', 'raiva', 'medo', 'amor', 'parado']
-NUM_SEQUENCIAS = 30         # quantas repeticoes de cada sinal ESTA pessoa vai gravar
+ACOES = ['rindo', 'triste', 'vergonha', 'nojo', 'inveja', 
+    'medo', 'feliz', 'confusao', 'nervoso', 'raiva', 
+    'bravo', 'inimigo', 'odio', 'idiota', 'fingir', 
+    'deboche', 'parado']
+NUM_SEQUENCIAS = 8         # quantas repeticoes de cada sinal ESTA pessoa vai gravar
 TAMANHO_SEQUENCIA = 30      # frames por repeticao (~1 segundo)
 SEGUNDOS_CONTAGEM = 2       # tempo de "prepare-se" antes de gravar
 # se mais de 20% dos frames perderem o corpo, a repeticao e descartada
@@ -22,14 +26,17 @@ JANELA = 'Coleta de Dados - Libras'
 
 
 def caminho_sequencia(acao, n):
+    """Monta o caminho onde sera salvo o exemplo numero n da acao."""
     return os.path.join(PASTA_DADOS, acao, f"{PESSOA}_{n}.npy")
 
 
 def contar_feitas(acao):
+    """Conta os arquivos de sequencia ja gravados para esta pessoa e acao."""
     return len(glob.glob(os.path.join(PASTA_DADOS, acao, f"{PESSOA}_*.npy")))
 
 
 def proximo_indice(acao):
+    """Busca o primeiro indice de arquivo que ainda nao existe para evitar sobrescrita."""
     n = 0
     while os.path.exists(caminho_sequencia(acao, n)):
         n += 1
@@ -37,12 +44,14 @@ def proximo_indice(acao):
 
 
 def texto(frame, msg, y, cor=(0, 255, 255), tamanho=0.7):
+    """Desenha uma instrucao na imagem da camera."""
     # Atencao: as fontes do OpenCV nao desenham acentos. Use texto sem acento na tela.
     cv2.putText(frame, msg, (15, y), cv2.FONT_HERSHEY_SIMPLEX,
                 tamanho, cor, 2, cv2.LINE_AA)
 
 
 def sair(cap, motivo=""):
+    """Libera os recursos da camera e janelas antes de encerrar a coleta."""
     cap.release()
     cv2.destroyAllWindows()
     if motivo:
@@ -52,9 +61,11 @@ def sair(cap, motivo=""):
 
 def ler_frame(cap, detector):
     """Le a camera, detecta maos+corpo e desenha o esqueleto no frame."""
+    # Captura um frame e encerra com uma mensagem se a camera falhar.
     ok, frame = cap.read()
     if not ok:
         sair(cap, "Falha ao ler a camera.")
+    # Detecta maos e corpo e desenha os pontos para dar retorno visual a quem grava.
     res_maos, res_pose = detector.processar(frame)
     desenhar_maos(frame, res_maos)
     desenhar_corpo(frame, res_pose)
@@ -62,11 +73,13 @@ def ler_frame(cap, detector):
 
 
 # --- 2. CAMERA E DETECTOR ---
+# Tenta a camera padrao e usa a segunda entrada como alternativa.
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     cap = cv2.VideoCapture(1)
 detector = Detector()
 
+# Para cada sinal, prepara a pasta e pula a coleta se a meta ja foi atingida.
 for acao in ACOES:
     os.makedirs(os.path.join(PASTA_DADOS, acao), exist_ok=True)
     feitas = contar_feitas(acao)
@@ -75,6 +88,7 @@ for acao in ACOES:
         continue
 
     # Tela de espera: voce descansa e comeca quando quiser
+    # Aguarda a pessoa iniciar a coleta com ESPACO ou encerrar com Q.
     while True:
         frame, _, _ = ler_frame(cap, detector)
         texto(
@@ -87,6 +101,7 @@ for acao in ACOES:
         if tecla == 32:
             break
 
+    # Repete contagem e gravacao ate atingir o total configurado para este sinal.
     while feitas < NUM_SEQUENCIAS:
         # --- Contagem: video AO VIVO, nada e gravado ---
         inicio = time.monotonic()
@@ -100,6 +115,7 @@ for acao in ACOES:
                 sair(cap)
 
         # --- Gravacao: TODOS os 30 frames sao gravados ---
+        # Guarda as coordenadas extraidas de cada frame, na ordem em que foram capturadas.
         sequencia = []
         for _ in range(TAMANHO_SEQUENCIA):
             frame, res_maos, res_pose = ler_frame(cap, detector)
@@ -112,13 +128,16 @@ for acao in ACOES:
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 sair(cap)
 
+        # Converte a lista em matriz; cada linha e um frame e cada coluna uma coordenada.
         sequencia = np.array(sequencia)               # formato: (30, 132)
+        # Descarta repeticoes em que muitas linhas estao zeradas por falta de deteccao do corpo.
         frames_invalidos = np.mean(~sequencia.any(axis=1))
         if frames_invalidos > MAX_FRAMES_INVALIDOS:
             print(
                 f"Repeticao descartada ({frames_invalidos:.0%} dos frames sem corpo detectado). Refazendo.")
             continue
 
+        # Salva cada repeticao em seu proprio arquivo NumPy para uso posterior no treinamento.
         np.save(caminho_sequencia(acao, proximo_indice(acao)),
                 sequencia)  # 1 arquivo por repeticao
         feitas += 1

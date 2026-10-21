@@ -15,6 +15,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
 # --- MODELOS DO MEDIAPIPE (baixados automaticamente na 1a vez) ---
+# Define a pasta local e os enderecos dos modelos de deteccao de maos e postura.
 PASTA_MODELOS = "modelos"
 URLS_MODELOS = {
     "hand_landmarker.task": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
@@ -38,6 +39,7 @@ CONEXOES_MAO = [
 def _ler_modelo(nome):
     """Garante que o .task existe (baixa se precisar) e devolve os bytes dele.
     Ler em bytes evita problemas com acentos/'c cedilha' no caminho do Windows."""
+    # Procura primeiro na pasta atual dos modelos e depois na raiz para compatibilidade.
     candidatos = [os.path.join(PASTA_MODELOS, nome), nome]  # aceita o arquivo antigo na raiz
     for caminho in candidatos:
         if os.path.exists(caminho):
@@ -71,6 +73,7 @@ class Detector:
             min_pose_presence_confidence=0.5,
             min_tracking_confidence=0.5,
         )
+        # Cria os detectores e guarda o ultimo timestamp para manter a ordem dos frames.
         self.maos = vision.HandLandmarker.create_from_options(opcoes_maos)
         self.pose = vision.PoseLandmarker.create_from_options(opcoes_pose)
         self._ultimo_ts = -1
@@ -142,12 +145,16 @@ def extrair_coordenadas(res_maos, res_pose, largura, altura):
 
 
 def desenhar_maos(frame, res_maos):
+    """Desenha os pontos e as conexoes das maos detectadas sobre o frame."""
     if res_maos.hand_landmarks:
         altura, largura, _ = frame.shape
         for mao in res_maos.hand_landmarks:
+            # Converte coordenadas normalizadas (0 a 1) para pixels da imagem.
             pontos = [(int(p.x * largura), int(p.y * altura)) for p in mao]
+            # Mostra cada articulacao como ponto vermelho.
             for px, py in pontos:
                 cv2.circle(frame, (px, py), 4, (0, 0, 255), -1)
+            # Liga as articulacoes conforme a estrutura dos dedos e da palma.
             for ini, fim in CONEXOES_MAO:
                 cv2.line(frame, pontos[ini], pontos[fim], (0, 255, 0), 2)
 
@@ -155,9 +162,12 @@ def desenhar_maos(frame, res_maos):
 def desenhar_corpo(frame, res_pose):
     """Desenha ombros (linha), nariz e cotovelos em azul, so para voce conferir se o corpo foi detectado."""
     if res_pose.pose_landmarks:
+        # Converte os pontos escolhidos do corpo para a escala em pixels da imagem.
         altura, largura, _ = frame.shape
         pose = res_pose.pose_landmarks[0]
         px = lambda i: (int(pose[i].x * largura), int(pose[i].y * altura))
+        # A linha entre os ombros ajuda a visualizar a referencia usada na normalizacao.
         cv2.line(frame, px(11), px(12), (255, 128, 0), 2)
+        # Exibe nariz, ombros e cotovelos para conferir a deteccao da pose.
         for i in [0, 11, 12, 13, 14]:
             cv2.circle(frame, px(i), 6, (255, 128, 0), -1)
