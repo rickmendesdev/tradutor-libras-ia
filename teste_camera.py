@@ -1,6 +1,10 @@
+import time
 import cv2
 
-from landmarks import Detector, desenhar_maos, desenhar_corpo
+from landmarks import (
+    Detector,
+    desenhar_maos,
+    desenhar_corpo)
 
 # Prática:
 
@@ -15,6 +19,9 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     cap = cv2.VideoCapture(1)
 
+fps = 0.0
+ultimo = time.monotonic()
+
 while cap.isOpened():
     sucesso, frame = cap.read()
     if not sucesso:
@@ -25,10 +32,30 @@ while cap.isOpened():
     desenhar_maos(frame, res_maos)
     desenhar_corpo(frame, res_pose)
 
-    n_maos = len(res_maos.hand_landmarks) if res_maos.hand_landmarks else 0
+    agora = time.monotonic()
+    fps = (
+        0.9 * fps
+        + 0.1 * (1.0 / max(agora - ultimo, 1e-6))
+    )
+
+    ultimo = agora
+
+    n_maos = (len(res_maos.hand_landmarks)
+              if res_maos.hand_landmarks
+              else 0)
+
     corpo_ok = bool(res_pose.pose_landmarks)
-    cv2.putText(frame, f"Maos: {n_maos} | Corpo: {'OK' if corpo_ok else 'NAO DETECTADO'}",
-                (15, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2, cv2.LINE_AA)
+
+    cv2.putText(
+        frame,
+        f"Maos: {n_maos} | Corpo: {'OK' if corpo_ok else 'NAO DETECTADO'} | FPS: {fps:.0f}",
+        (15, 30),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.7,
+        (0, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
 
     cv2.imshow('Teste MediaPipe - Aperte Q para sair', frame)
     if cv2.waitKey(10) & 0xFF == ord('q'):

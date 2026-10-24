@@ -19,17 +19,23 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCh
 from landmarks import N_FEATURES, PASTA_MODELOS
 
 # --- 1. CONFIGURACOES ---
-PASTA_DADOS = "dados_libras"  # Pasta com subpastas e arquivos .npy de cada sinal.
+# Pasta com subpastas e arquivos .npy de cada sinal.
+PASTA_DADOS = "dados_libras"
 TAMANHO_SEQUENCIA = 30  # Quantidade de frames esperada em cada exemplo.
-CAMINHO_MODELO = os.path.join(PASTA_MODELOS, "modelo_libras.keras")  # Arquivo da rede treinada.
-CAMINHO_ACOES = os.path.join(PASTA_MODELOS, "acoes.json")  # Ordem dos nomes correspondente as classes do modelo.
-CAMINHO_GRAFICO = os.path.join(PASTA_MODELOS, "grafico_treino.png")  # Imagem com as curvas de treino e validacao.
+# Arquivo da rede treinada.
+CAMINHO_MODELO = os.path.join(PASTA_MODELOS, "modelo_libras.keras")
+# Ordem dos nomes correspondente as classes do modelo.
+CAMINHO_ACOES = os.path.join(PASTA_MODELOS, "acoes.json")
+# Imagem com as curvas de treino e validacao.
+CAMINHO_GRAFICO = os.path.join(PASTA_MODELOS, "grafico_treino.png")
+
 
 def carregar_dataset():
     """Carrega sequencias validas e cria os rotulos numericos das acoes."""
     # Sem esta pasta nao ha exemplos para montar o conjunto de treinamento.
     if not os.path.exists(PASTA_DADOS):
-        raise SystemExit(f"Erro: A pasta '{PASTA_DADOS}' nao existe. Grave os sinais primeiro!")
+        raise SystemExit(
+            f"Erro: A pasta '{PASTA_DADOS}' nao existe. Grave os sinais primeiro!")
 
     # Detecta automaticamente quais pastas de sinais ja possuem gravacoes .npy
     pastas = sorted([
@@ -37,7 +43,8 @@ def carregar_dataset():
         if os.path.isdir(os.path.join(PASTA_DADOS, d))
     ])
 
-    acoes_validas = []  # Nomes de sinais que tem dados suficientes para treinar.
+    # Nomes de sinais que tem dados suficientes para treinar.
+    acoes_validas = []
     sequencias = []  # Matrizes de frames aceitas, uma matriz por gravacao.
     rotulos = []  # Indice da acao correspondente a cada sequencia.
 
@@ -45,7 +52,8 @@ def carregar_dataset():
     for acao in pastas:
         arquivos = glob.glob(os.path.join(PASTA_DADOS, acao, "*.npy"))
         if len(arquivos) < 2:
-            print(f"[AVISO] Sinal '{acao}' ignorado (possui apenas {len(arquivos)} arquivo).")
+            print(
+                f"[AVISO] Sinal '{acao}' ignorado (possui apenas {len(arquivos)} arquivo).")
             continue
 
         # O indice atribuido aqui sera a classe numerica usada pela rede.
@@ -61,18 +69,22 @@ def carregar_dataset():
                 rotulos.append(indice_acao)
                 contagem += 1
             else:
-                print(f"[AVISO] Arquivo ignorado por formato invalido {dados.shape}: {arq}")
+                print(
+                    f"[AVISO] Arquivo ignorado por formato invalido {dados.shape}: {arq}")
 
         print(f" -> Sinal '{acao}': {contagem} sequencias carregadas.")
 
     if len(acoes_validas) < 2:
-        raise SystemExit("\nErro: Voce precisa ter pelo menos 2 sinais gravados para treinar a IA!")
+        raise SystemExit(
+            "\nErro: Voce precisa ter pelo menos 2 sinais gravados para treinar a IA!")
 
     # X contem os movimentos; y converte cada classe em um vetor one-hot para a classificacao.
     X = np.array(sequencias, dtype=np.float32)
-    y = to_categorical(rotulos, num_classes=len(acoes_validas)).astype(np.float32)
+    y = to_categorical(rotulos, num_classes=len(
+        acoes_validas)).astype(np.float32)
 
     return X, y, acoes_validas
+
 
 def construir_modelo(num_classes):
     """Cria a Rede Neural Temporal (LSTM) para analisar o movimento nos 30 frames."""
@@ -108,6 +120,7 @@ def construir_modelo(num_classes):
     )
     return modelo
 
+
 def salvar_grafico(historico):
     """Gera um grafico de precisao e erro para usar nos slides da apresentacao."""
     plt.figure(figsize=(10, 4))
@@ -115,7 +128,8 @@ def salvar_grafico(historico):
     # Compara a acuracia nos dados usados para aprender e nos dados de validacao.
     plt.subplot(1, 2, 1)
     plt.plot(historico.history['categorical_accuracy'], label='Treino')
-    plt.plot(historico.history['val_categorical_accuracy'], label='Validacao (Teste)')
+    plt.plot(
+        historico.history['val_categorical_accuracy'], label='Validacao (Teste)')
     plt.title('Precisao do Modelo (Acuracia)')
     plt.xlabel('Epocas')
     plt.ylabel('Acuracia')
@@ -138,6 +152,7 @@ def salvar_grafico(historico):
     plt.close()
     print(f"Grafico de desempenho salvo em: {CAMINHO_GRAFICO}")
 
+
 def treinar():
     """Executa o carregamento, treinamento, avaliacao e salvamento do modelo."""
     # Cria a pasta de destino se ela ainda nao existir.
@@ -145,7 +160,8 @@ def treinar():
 
     # 1. Carrega as matrizes (30, 132) e os nomes dos sinais.
     X, y, acoes = carregar_dataset()
-    print(f"\nTotal carregado: {X.shape[0]} videos | Formato: {X.shape[1]} frames x {X.shape[2]} pontos")
+    print(
+        f"\nTotal carregado: {X.shape[0]} videos | Formato: {X.shape[1]} frames x {X.shape[2]} pontos")
 
     # 2. Separa 80% para treinamento e 20% para validacao, mantendo a proporcao por classe.
     indices_classes = np.argmax(y, axis=1)
@@ -160,9 +176,12 @@ def treinar():
     # Interrompe quando a validacao deixa de melhorar, reduz a taxa de aprendizado
     # quando o progresso estagna e grava o melhor modelo observado.
     callbacks = [
-        EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True, verbose=1),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=8, min_lr=1e-5, verbose=1),
-        ModelCheckpoint(CAMINHO_MODELO, monitor='val_categorical_accuracy', save_best_only=True, verbose=0)
+        EarlyStopping(monitor='val_loss', patience=20,
+                      restore_best_weights=True, verbose=1),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5,
+                          patience=8, min_lr=1e-5, verbose=1),
+        ModelCheckpoint(
+            CAMINHO_MODELO, monitor='val_categorical_accuracy', save_best_only=True, verbose=0)
     ]
 
     # 4. Treina com os exemplos separados e acompanha o desempenho na validacao.
@@ -186,14 +205,17 @@ def treinar():
     precisao_final = accuracy_score(reais, previsoes)
 
     print("\n" + "=" * 50)
-    print(f"TREINAMENTO CONCLUIDO! Precisao no Teste: {precisao_final * 100:.2f}%")
+    print(
+        f"TREINAMENTO CONCLUIDO! Precisao no Teste: {precisao_final * 100:.2f}%")
     print("=" * 50)
     print("\nRelatorio detalhado por sinal:")
-    print(classification_report(reais, previsoes, target_names=acoes, zero_division=0))
+    print(classification_report(reais, previsoes,
+          target_names=acoes, zero_division=0))
 
     salvar_grafico(historico)
     print(f"Modelo salvo em: {CAMINHO_MODELO}")
     print(f"Lista de sinais salva em: {CAMINHO_ACOES}")
+
 
 if __name__ == "__main__":
     # Executa o treinamento apenas quando este arquivo e iniciado diretamente.

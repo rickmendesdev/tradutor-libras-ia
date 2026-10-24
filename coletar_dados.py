@@ -1,28 +1,53 @@
 import glob
 import os
+import sys
 import time
 
 import cv2
 import numpy as np
 
 # Reutiliza o detector, a extracao de coordenadas e os desenhos do modulo compartilhado.
-from landmarks import Detector, extrair_coordenadas, desenhar_maos, desenhar_corpo
+from landmarks import (Detector, extrair_coordenadas, desenhar_maos, desenhar_corpo,
+                       N_VALORES_MAO)
+
+
+def obter_pessoa():
+    nome = sys.argv[1] if len(sys.argv) > 1 else input(
+        "Nome de quem esta gravando (ex.: Vinicius): "
+    )
+    nome = nome.strip().lower()
+
+    if not (nome.isascii() and nome.isalnum()):
+        raise SystemExit(
+            "Use so letras e numeros no nome "
+            "(sem acento, espaco ou '_')."
+        )
+
+    return nome
 
 # --- 1. CONFIGURACOES DO DATASET ---
 # TROQUE no PC de cada um (ex.: o nome do seu amigo). Vai no nome dos arquivos.
-PESSOA = "rick"
+# PESSOA = "Vinicius"
+# PASTA_DADOS = "dados_libras"
+
+
+PESSOA = obter_pessoa()
 PASTA_DADOS = "dados_libras"
-# TROQUE pelos sinais que voces validaram
-ACOES = ['rindo', 'triste', 'vergonha', 'nojo', 'inveja', 
-    'medo', 'feliz', 'confusao', 'nervoso', 'raiva', 
-    'bravo', 'inimigo', 'odio', 'idiota', 'fingir', 
-    'deboche', 'parado']
-NUM_SEQUENCIAS = 8         # quantas repeticoes de cada sinal ESTA pessoa vai gravar
+# OBS:DEVEMOS CATALOGAR ESSES SINAIS LOGO
+ACOES = ['rindo', 'triste', 'vergonha', 'nojo', 'inveja',
+         'medo', 'feliz', 'confusao', 'nervoso', 'raiva',
+         'bravo', 'inimigo', 'odio', 'idiota', 'fingir',
+         'deboche', 'parado']
+NUM_SEQUENCIAS = 40       # quantas repeticoes de cada sinal ESTA pessoa vai gravar
 TAMANHO_SEQUENCIA = 30      # frames por repeticao (~1 segundo)
 SEGUNDOS_CONTAGEM = 2       # tempo de "prepare-se" antes de gravar
 # se mais de 20% dos frames perderem o corpo, a repeticao e descartada
 MAX_FRAMES_INVALIDOS = 0.2
+# Nos sinais com mão, pelo menos 70% dos grames precisam ter alguma mão detectada
+MIN_FRAMES_COM_MAO = 0.7
 JANELA = 'Coleta de Dados - Libras'
+ACOES_SEM_MAO = ['parado']
+JANELA = 'Coleta de Dados - Libras '
 
 
 def caminho_sequencia(acao, n):
@@ -31,14 +56,22 @@ def caminho_sequencia(acao, n):
 
 
 def contar_feitas(acao):
-    """Conta os arquivos de sequencia ja gravados para esta pessoa e acao."""
-    return len(glob.glob(os.path.join(PASTA_DADOS, acao, f"{PESSOA}_*.npy")))
+    """Conta as sequencias reais ja gravadas para esta pessoa e acao."""
+    arquivos = glob.glob(
+        os.path.join(PASTA_DADOS, acao, f"{PESSOA}_*.npy")
+    )
+
+    return len([
+        f for f in arquivos
+        if "_aug_" not in os.path.basename(f)
+    ])
 
 
 def proximo_indice(acao):
     """Busca o primeiro indice de arquivo que ainda nao existe para evitar sobrescrita."""
     n = 0
-    while os.path.exists(caminho_sequencia(acao, n)):
+    while os.path.exists(
+            caminho_sequencia(acao, n)):
         n += 1
     return n
 
@@ -48,6 +81,18 @@ def texto(frame, msg, y, cor=(0, 255, 255), tamanho=0.7):
     # Atencao: as fontes do OpenCV nao desenham acentos. Use texto sem acento na tela.
     cv2.putText(frame, msg, (15, y), cv2.FONT_HERSHEY_SIMPLEX,
                 tamanho, cor, 2, cv2.LINE_AA)
+
+
+def indicador_mao(frame, res_maos):
+    """Mostra se alguma mão esta sendo detectada"""
+    tem_mao = bool(res_maos.hand_landmarks)
+    texto(
+        frame,
+        "MAO OK" if tem_mao else "SEM MAO!",
+        60,
+        (0, 255, 0) if tem_mao else (0, 0, 255)
+
+    )
 
 
 def sair(cap, motivo=""):
@@ -90,16 +135,20 @@ for acao in ACOES:
     # Tela de espera: voce descansa e comeca quando quiser
     # Aguarda a pessoa iniciar a coleta com ESPACO ou encerrar com Q.
     while True:
-        frame, _, _ = ler_frame(cap, detector)
+        frame, res_maos, _ = ler_frame(cap, detector)
+        indicador_mao(frame, res_maos)
+
         texto(
-            frame, f"Proximo sinal: {acao.upper()}  ({feitas}/{NUM_SEQUENCIAS})", 30)
-        texto(frame, "ESPACO = comecar | Q = sair", 60, (255, 255, 255))
-        cv2.imshow(JANELA, frame)
-        tecla = cv2.waitKey(1) & 0xFF
-        if tecla == ord('q'):
-            sair(cap)
-        if tecla == 32:
-            break
+            frame,
+            f"Proximo sinal: {acao.upper()} ({feitas}/{NUM_SEQUENCIAS})",
+            30
+        )
+        texto(
+            frame,
+            "ESPACO = comecar | q = sair",
+            90,
+            (255, 255, 255)
+        )
 
     # Repete contagem e gravacao ate atingir o total configurado para este sinal.
     while feitas < NUM_SEQUENCIAS:
