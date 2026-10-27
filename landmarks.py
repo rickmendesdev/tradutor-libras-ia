@@ -27,7 +27,8 @@ URLS_MODELOS = {
 # Os ombros (11 e 12) NAO entram no vetor: eles viram a "regua" da normalizacao.
 PONTOS_POSE = [0, 13, 14]
 N_VALORES_MAO = 21 * 3                                   # 63 por mao (x, y, z)
-N_FEATURES = 2 * N_VALORES_MAO + len(PONTOS_POSE) * 2    # 126 (maos) + 6 (corpo) = 132
+# 126 (maos) + 6 (corpo) = 132
+N_FEATURES = 2 * N_VALORES_MAO + len(PONTOS_POSE) * 2
 
 CONEXOES_MAO = [
     (0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8),
@@ -40,7 +41,8 @@ def _ler_modelo(nome):
     """Garante que o .task existe (baixa se precisar) e devolve os bytes dele.
     Ler em bytes evita problemas com acentos/'c cedilha' no caminho do Windows."""
     # Procura primeiro na pasta atual dos modelos e depois na raiz para compatibilidade.
-    candidatos = [os.path.join(PASTA_MODELOS, nome), nome]  # aceita o arquivo antigo na raiz
+    # aceita o arquivo antigo na raiz
+    candidatos = [os.path.join(PASTA_MODELOS, nome), nome]
     for caminho in candidatos:
         if os.path.exists(caminho):
             with open(caminho, "rb") as f:
@@ -58,7 +60,8 @@ class Detector:
 
     def __init__(self):
         opcoes_maos = vision.HandLandmarkerOptions(
-            base_options=python.BaseOptions(model_asset_buffer=_ler_modelo("hand_landmarker.task")),
+            base_options=python.BaseOptions(
+                model_asset_buffer=_ler_modelo("hand_landmarker.task")),
             running_mode=vision.RunningMode.VIDEO,
             num_hands=2,
             min_hand_detection_confidence=0.6,
@@ -66,7 +69,8 @@ class Detector:
             min_tracking_confidence=0.5,
         )
         opcoes_pose = vision.PoseLandmarkerOptions(
-            base_options=python.BaseOptions(model_asset_buffer=_ler_modelo("pose_landmarker_lite.task")),
+            base_options=python.BaseOptions(
+                model_asset_buffer=_ler_modelo("pose_landmarker_lite.task")),
             running_mode=vision.RunningMode.VIDEO,
             num_poses=1,
             min_pose_detection_confidence=0.5,
@@ -88,8 +92,17 @@ class Detector:
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
-        return (self.maos.detect_for_video(mp_image, ts),
-                self.pose.detect_for_video(mp_image, ts))
+
+        # tentativa de correção para solucionar travamento na hora de execução teste 1:
+        print("1 - Iniciando deteccao das maos ...", flush=True)
+        res_maos = self.maos.detect_for_video(mp_image, ts)
+        print("2 - maos concluida", flush=True)
+
+        print("3 - Iniciando deteccao do corpo ...", flush=True)
+        res_pose = self.pose.detect_for_video(mp_image, ts)
+        print("4 - Deteccao do corpo concluida.", flush=True)
+
+        return res_maos, res_pose
 
 
 def extrair_coordenadas(res_maos, res_pose, largura, altura):
@@ -134,7 +147,8 @@ def extrair_coordenadas(res_maos, res_pose, largura, altura):
             coords = []
             for p in mao:
                 x, y = norm_xy(p)
-                coords += [x, y, p.z * largura / escala]  # z ja e relativo ao pulso; so muda a escala
+                # z ja e relativo ao pulso; so muda a escala
+                coords += [x, y, p.z * largura / escala]
             if lado == 'Left':
                 mao_esq = np.array(coords)
             else:
@@ -165,7 +179,7 @@ def desenhar_corpo(frame, res_pose):
         # Converte os pontos escolhidos do corpo para a escala em pixels da imagem.
         altura, largura, _ = frame.shape
         pose = res_pose.pose_landmarks[0]
-        px = lambda i: (int(pose[i].x * largura), int(pose[i].y * altura))
+        def px(i): return (int(pose[i].x * largura), int(pose[i].y * altura))
         # A linha entre os ombros ajuda a visualizar a referencia usada na normalizacao.
         cv2.line(frame, px(11), px(12), (255, 128, 0), 2)
         # Exibe nariz, ombros e cotovelos para conferir a deteccao da pose.

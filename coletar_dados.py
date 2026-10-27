@@ -137,18 +137,31 @@ for acao in ACOES:
     while True:
         frame, res_maos, _ = ler_frame(cap, detector)
         indicador_mao(frame, res_maos)
+        # tentativa de correção para problema de execução
 
-        texto(
-            frame,
-            f"Proximo sinal: {acao.upper()} ({feitas}/{NUM_SEQUENCIAS})",
-            30
-        )
-        texto(
-            frame,
-            "ESPACO = comecar | q = sair",
-            90,
-            (255, 255, 255)
-        )
+        texto(frame, f"Proximo sinal: {acao}", 30)
+        texto(frame, "ESPACO = comeca | q = sair", 90)
+
+        cv2.imshow(JANELA, frame)
+
+        tecla = cv2.waitKey(1) & 0xFF
+
+        if tecla == ord(' '):
+            break
+        elif tecla == ord('q'):
+            sair(cap, "Coleta encerrada pelo usuario")
+
+        # texto(
+        #   frame,
+        #   f"Proximo sinal: {acao.upper()} ({feitas}/{NUM_SEQUENCIAS})",
+        #    30
+        # )
+        # texto(
+        #    frame,
+        #    "ESPACO = comecar | q = sair",
+        #    90,
+        #    (255, 255, 255)
+        # )
 
     # Repete contagem e gravacao ate atingir o total configurado para este sinal.
     while feitas < NUM_SEQUENCIAS:
