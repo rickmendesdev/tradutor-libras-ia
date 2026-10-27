@@ -24,7 +24,7 @@ def aplicar_variacao(sequencia, rng=None):
     nova_seq = sequencia.copy()
 
     # 1. Variacao de Tempo (Simula comecar o sinal um pouquinho antes ou depois)
-    deslocamento_tempo = np.random.choice([-2, -1, 0, 1, 2])
+    deslocamento_tempo = int(rng.choice([-2, -1, 0, 1, 2]))
     if deslocamento_tempo > 0:
         nova_seq = np.vstack([np.repeat(nova_seq[:1], deslocamento_tempo, axis=0),
                               nova_seq[:-deslocamento_tempo]])
@@ -35,9 +35,9 @@ def aplicar_variacao(sequencia, rng=None):
 
     # Sorteia fatores para toda a sequencia, evitando variacoes bruscas entre frames.
     # Variacao de +-7% na amplitude do braco/mao
-    escala = np.random.uniform(0.93, 1.07)
-    shift_x = np.random.uniform(-0.04, 0.04)   # Variacao de posicao horizontal
-    shift_y = np.random.uniform(-0.04, 0.04)   # Variacao de altura da mao
+    escala = rng.uniform(0.93, 1.07)
+    shift_x = rng.uniform(-0.04, 0.04)   # Variacao de posicao horizontal
+    shift_y = rng.uniform(-0.04, 0.04)   # Variacao de altura da mao
 
     for i in range(nova_seq.shape[0]):
         frame = nova_seq[i].copy()
@@ -49,7 +49,7 @@ def aplicar_variacao(sequencia, rng=None):
         frame = frame * escala
 
         # aplicacao de conceito para mao esquerda com 63 valores.
-        # Se a mao inteira nao aparecer o bloco com zeros será aplicado deslocamente/ruido.
+        # Se a mao inteira nao aparecer o bloco com zeros nao recebera deslocamento/ruido.
         esquerda = frame[0:63]
         if np.any(frame[0:63]):
             esquerda[0:63:3] += shift_x
@@ -75,16 +75,16 @@ def aplicar_variacao(sequencia, rng=None):
     return nova_seq.astype(sequencia.dtype, copy=False)
 
 
-def aumentar_treino(x, y, variacoes, rng):
+def aumentar_treino(x, y, variacoes, rng=None):
     """Devolve exemplo originais + variacoes apenas para o conjunto de treino.
     x:(n,frames,132);y:rotulos correspondentes(por exemplo, one-hot)"""
     if rng is None:
         rng = np.random.default_rng()
 
     if len(x) != len(y):
-        raise ValueError("x e Y precisam ter a mesma quantidade de xemplo.")
+        raise ValueError("x e Y precisam ter a mesma quantidade de exemplo.")
     if variacoes < 0:
-        raise ValueError("variacoes nao pode ser negativao.")
+        raise ValueError("variacoes nao pode ser negativo.")
 
     lista_x = [x]
     lista_y = [y]
@@ -108,11 +108,11 @@ def limpar_arquivos_aug():
         print("Nenhum arquivo *_aug_* encontrado")
         return
     resposta = input(
-        f"Apagar {len(arquivos)} arquivos *_aug_* de {PASTA_DADOS}'? As gravacoes reais NÃO serao afetadas (s/n): ")
+        f"Apagar {len(arquivos)} arquivos *_aug_* de '{PASTA_DADOS}'? As gravacoes reais NÃO serao afetadas (s/n): ")
     if resposta.strip().lower() == "s":
         for arquivo in arquivos:
             os.remove(arquivo)
-            print(f"{len(arquivos)} aquivo(s) aumentado(s) removidos(s).")
+        print(f"{len(arquivos)} arquivo(s) aumentado(s) removido(s).")
     else:
         print("Nada foi apagado.")
 
@@ -122,11 +122,11 @@ if __name__ == "__main__":
         limpar_arquivos_aug()
     else:
         print("Este modulo é usado pelo treinar_modelo.py")
-        print("Para apagar os arquivos *_aug_* antigos: python multplicar_dados.py limpar")
+        print("Para apagar os arquivos *_aug_* antigos: python multiplicar_dados.py limpar")
 
 
 # Bloco comentado, caso a nova lógica não esteja
-# interessante para o projeto sinta-se a vontade sinta-se a vontade para desfazer.
+# interessante para o projeto sinta-se a vontade para desfazer.
 # def multiplicar():
    # """Completa a meta de exemplos de cada pessoa criando variacoes das gravacoes reais."""
     # Nao ha nada a aumentar se a pasta principal ainda nao tiver sido criada.

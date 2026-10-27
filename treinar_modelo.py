@@ -17,11 +17,15 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCh
 
 # Mantem o formato dos dados e a pasta do modelo iguais aos usados na coleta.
 from landmarks import N_FEATURES, PASTA_MODELOS
+# Importa a funcao de multiplicacao em memoria criada no multiplicar_dados.py.
+from multiplicar_dados import aumentar_treino
 
 # --- 1. CONFIGURACOES ---
 # Pasta com subpastas e arquivos .npy de cada sinal.
 PASTA_DADOS = "dados_libras"
 TAMANHO_SEQUENCIA = 30  # Quantidade de frames esperada em cada exemplo.
+# Quantas variacoes extras criar na memoria para cada video real de treino (3 = quadruplica o treino).
+VARIACOES_TREINO = 3
 # Arquivo da rede treinada.
 CAMINHO_MODELO = os.path.join(PASTA_MODELOS, "modelo_libras.keras")
 # Ordem dos nomes correspondente as classes do modelo.
@@ -50,10 +54,13 @@ def carregar_dataset():
 
     print("\n--- CARREGANDO DADOS ---")
     for acao in pastas:
-        arquivos = glob.glob(os.path.join(PASTA_DADOS, acao, "*.npy"))
+        # Carrega apenas as gravacoes reais (ignora eventuais _aug_ antigos na pasta).
+        todos_arquivos = glob.glob(os.path.join(PASTA_DADOS, acao, "*.npy"))
+        arquivos = [f for f in todos_arquivos if "_aug_" not in os.path.basename(f)]
+
         if len(arquivos) < 2:
             print(
-                f"[AVISO] Sinal '{acao}' ignorado (possui apenas {len(arquivos)} arquivo).")
+                f"[AVISO] Sinal '{acao}' ignorado (possui apenas {len(arquivos)} arquivo real).")
             continue
 
         # O indice atribuido aqui sera a classe numerica usada pela rede.
@@ -72,7 +79,7 @@ def carregar_dataset():
                 print(
                     f"[AVISO] Arquivo ignorado por formato invalido {dados.shape}: {arq}")
 
-        print(f" -> Sinal '{acao}': {contagem} sequencias carregadas.")
+        print(f" -> Sinal '{acao}': {contagem} sequencias reais carregadas.")
 
     if len(acoes_validas) < 2:
         raise SystemExit(
@@ -161,13 +168,21 @@ def treinar():
     # 1. Carrega as matrizes (30, 132) e os nomes dos sinais.
     X, y, acoes = carregar_dataset()
     print(
-        f"\nTotal carregado: {X.shape[0]} videos | Formato: {X.shape[1]} frames x {X.shape[2]} pontos")
+        f"\nTotal real carregado: {X.shape[0]} videos | Formato: {X.shape[1]} frames x {X.shape[2]} pontos")
 
     # 2. Separa 80% para treinamento e 20% para validacao, mantendo a proporcao por classe.
     indices_classes = np.argmax(y, axis=1)
     X_treino, X_teste, y_treino, y_teste = train_test_split(
         X, y, test_size=0.20, random_state=42, stratify=indices_classes
     )
+
+    # 2.1 Aplica a multiplicacao de dados APENAS no conjunto de treino (evita vazamento de dados no teste).
+    rng = np.random.default_rng(42)
+    X_treino, y_treino = aumentar_treino(
+        X_treino, y_treino, variacoes=VARIACOES_TREINO, rng=rng
+    )
+    print(
+        f"Apos multiplicacao em memoria: {X_treino.shape[0]} exemplos de treino | {X_teste.shape[0]} exemplos reais de teste")
 
     # 3. Cria a rede com uma classe de saida para cada sinal e exibe sua arquitetura.
     modelo = construir_modelo(len(acoes))

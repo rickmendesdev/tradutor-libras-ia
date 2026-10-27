@@ -38,16 +38,16 @@ ACOES = ['rindo', 'triste', 'vergonha', 'nojo', 'inveja',
          'medo', 'feliz', 'confusao', 'nervoso', 'raiva',
          'bravo', 'inimigo', 'odio', 'idiota', 'fingir',
          'deboche', 'parado']
-NUM_SEQUENCIAS = 40       # quantas repeticoes de cada sinal ESTA pessoa vai gravar
+# Com 10 repeticoes reais, o treinar_modelo.py multiplica para 40 automaticamente na memoria!
+NUM_SEQUENCIAS = 10       # quantas repeticoes de cada sinal ESTA pessoa vai gravar
 TAMANHO_SEQUENCIA = 30      # frames por repeticao (~1 segundo)
 SEGUNDOS_CONTAGEM = 2       # tempo de "prepare-se" antes de gravar
 # se mais de 20% dos frames perderem o corpo, a repeticao e descartada
 MAX_FRAMES_INVALIDOS = 0.2
-# Nos sinais com mão, pelo menos 70% dos grames precisam ter alguma mão detectada
+# Nos sinais com mão, pelo menos 70% dos frames precisam ter alguma mão detectada
 MIN_FRAMES_COM_MAO = 0.7
-JANELA = 'Coleta de Dados - Libras'
 ACOES_SEM_MAO = ['parado']
-JANELA = 'Coleta de Dados - Libras '
+JANELA = 'Coleta de Dados - Libras'
 
 
 def caminho_sequencia(acao, n):
@@ -91,7 +91,6 @@ def indicador_mao(frame, res_maos):
         "MAO OK" if tem_mao else "SEM MAO!",
         60,
         (0, 255, 0) if tem_mao else (0, 0, 255)
-
     )
 
 
@@ -139,7 +138,7 @@ for acao in ACOES:
         indicador_mao(frame, res_maos)
         # tentativa de correção para problema de execução
 
-        texto(frame, f"Proximo sinal: {acao}", 30)
+        texto(frame, f"Proximo sinal: {acao.upper()} ({feitas}/{NUM_SEQUENCIAS})", 30)
         texto(frame, "ESPACO = comeca | q = sair", 90)
 
         cv2.imshow(JANELA, frame)
@@ -168,7 +167,8 @@ for acao in ACOES:
         # --- Contagem: video AO VIVO, nada e gravado ---
         inicio = time.monotonic()
         while time.monotonic() - inicio < SEGUNDOS_CONTAGEM:
-            frame, _, _ = ler_frame(cap, detector)
+            frame, res_maos, _ = ler_frame(cap, detector)
+            indicador_mao(frame, res_maos)
             restante = SEGUNDOS_CONTAGEM - (time.monotonic() - inicio)
             texto(
                 frame, f"PREPARE-SE: {acao.upper()}  ({restante:.0f}s)", 30, (0, 255, 0))
@@ -181,6 +181,7 @@ for acao in ACOES:
         sequencia = []
         for _ in range(TAMANHO_SEQUENCIA):
             frame, res_maos, res_pose = ler_frame(cap, detector)
+            indicador_mao(frame, res_maos)
             altura, largura, _ = frame.shape
             sequencia.append(extrair_coordenadas(
                 res_maos, res_pose, largura, altura))
@@ -192,12 +193,21 @@ for acao in ACOES:
 
         # Converte a lista em matriz; cada linha e um frame e cada coluna uma coordenada.
         sequencia = np.array(sequencia)               # formato: (30, 132)
+        
         # Descarta repeticoes em que muitas linhas estao zeradas por falta de deteccao do corpo.
         frames_invalidos = np.mean(~sequencia.any(axis=1))
         if frames_invalidos > MAX_FRAMES_INVALIDOS:
             print(
                 f"Repeticao descartada ({frames_invalidos:.0%} dos frames sem corpo detectado). Refazendo.")
             continue
+
+        # Descarta repeticoes de sinais com mao onde a mao quase nao apareceu no quadro.
+        if acao not in ACOES_SEM_MAO:
+            frames_com_mao = np.mean(sequencia[:, :2 * N_VALORES_MAO].any(axis=1))
+            if frames_com_mao < MIN_FRAMES_COM_MAO:
+                print(
+                    f"Repeticao descartada (mao detectada em apenas {frames_com_mao:.0%} dos frames). Refazendo.")
+                continue
 
         # Salva cada repeticao em seu proprio arquivo NumPy para uso posterior no treinamento.
         np.save(caminho_sequencia(acao, proximo_indice(acao)),

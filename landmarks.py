@@ -94,13 +94,14 @@ class Detector:
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
 
         # tentativa de correção para solucionar travamento na hora de execução teste 1:
-        print("1 - Iniciando deteccao das maos ...", flush=True)
+        # (Prints comentados para manter o FPS alto na camera)
+        # print("1 - Iniciando deteccao das maos ...", flush=True)
         res_maos = self.maos.detect_for_video(mp_image, ts)
-        print("2 - maos concluida", flush=True)
+        # print("2 - maos concluida", flush=True)
 
-        print("3 - Iniciando deteccao do corpo ...", flush=True)
+        # print("3 - Iniciando deteccao do corpo ...", flush=True)
         res_pose = self.pose.detect_for_video(mp_image, ts)
-        print("4 - Deteccao do corpo concluida.", flush=True)
+        # print("4 - Deteccao do corpo concluida.", flush=True)
 
         return res_maos, res_pose
 
