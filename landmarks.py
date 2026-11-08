@@ -15,7 +15,6 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
 # --- MODELOS DO MEDIAPIPE (baixados automaticamente na 1a vez) ---
-# Define a pasta local e os enderecos dos modelos de deteccao de maos e postura.
 PASTA_MODELOS = "modelos"
 URLS_MODELOS = {
     "hand_landmarker.task": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
@@ -23,11 +22,8 @@ URLS_MODELOS = {
 }
 
 # --- FORMATO DO VETOR DE CADA FRAME ---
-# Pontos do corpo (indices do MediaPipe Pose): 0 = nariz, 13 = cotovelo esq., 14 = cotovelo dir.
-# Os ombros (11 e 12) NAO entram no vetor: eles viram a "regua" da normalizacao.
 PONTOS_POSE = [0, 13, 14]
-N_VALORES_MAO = 21 * 3                                   # 63 por mao (x, y, z)
-# 126 (maos) + 6 (corpo) = 132
+N_VALORES_MAO = 21 * 3                         # 63 por mao (x, y, z)
 N_FEATURES = 2 * N_VALORES_MAO + len(PONTOS_POSE) * 2
 
 CONEXOES_MAO = [
@@ -38,10 +34,6 @@ CONEXOES_MAO = [
 
 
 def _ler_modelo(nome):
-    """Garante que o .task existe (baixa se precisar) e devolve os bytes dele.
-    Ler em bytes evita problemas com acentos/'c cedilha' no caminho do Windows."""
-    # Procura primeiro na pasta atual dos modelos e depois na raiz para compatibilidade.
-    # aceita o arquivo antigo na raiz
     candidatos = [os.path.join(PASTA_MODELOS, nome), nome]
     for caminho in candidatos:
         if os.path.exists(caminho):
@@ -77,14 +69,11 @@ class Detector:
             min_pose_presence_confidence=0.5,
             min_tracking_confidence=0.5,
         )
-        # Cria os detectores e guarda o ultimo timestamp para manter a ordem dos frames.
         self.maos = vision.HandLandmarker.create_from_options(opcoes_maos)
         self.pose = vision.PoseLandmarker.create_from_options(opcoes_pose)
         self._ultimo_ts = -1
 
     def processar(self, frame_bgr):
-        """Recebe um frame do OpenCV (BGR). Devolve (resultado_maos, resultado_pose)."""
-        # O modo VIDEO exige timestamps (ms) sempre crescentes
         ts = int(time.monotonic() * 1000)
         if ts <= self._ultimo_ts:
             ts = self._ultimo_ts + 1
@@ -93,33 +82,13 @@ class Detector:
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
 
-        # tentativa de correção para solucionar travamento na hora de execução teste 1:
-        # (Prints comentados para manter o FPS alto na camera)
-        # print("1 - Iniciando deteccao das maos ...", flush=True)
         res_maos = self.maos.detect_for_video(mp_image, ts)
-        # print("2 - maos concluida", flush=True)
-
-        # print("3 - Iniciando deteccao do corpo ...", flush=True)
         res_pose = self.pose.detect_for_video(mp_image, ts)
-        # print("4 - Deteccao do corpo concluida.", flush=True)
 
         return res_maos, res_pose
 
 
 def extrair_coordenadas(res_maos, res_pose, largura, altura):
-    """
-    Transforma o resultado do MediaPipe em um vetor de N_FEATURES numeros.
-
-    NORMALIZACAO (o ponto-chave):
-      - origem  = ponto no meio dos dois ombros
-      - escala  = distancia entre os ombros
-    Assim, os numeros dizem "onde a mao esta em relacao ao CORPO", e nao
-    "onde a mao esta na imagem". Perto/longe da camera ou mais para o lado
-    deixam de mudar o dado.
-
-    Se o corpo (ombros) nao for detectado, devolve tudo zero (frame invalido).
-    Se uma mao nao aparecer, os 63 valores dela ficam zero.
-    """
     vazio = np.zeros(N_FEATURES)
     if not res_pose.pose_landmarks:
         return vazio
@@ -127,8 +96,6 @@ def extrair_coordenadas(res_maos, res_pose, largura, altura):
     pose = res_pose.pose_landmarks[0]
     ombro_esq, ombro_dir = pose[11], pose[12]
 
-    # O MediaPipe entrega x,y entre 0 e 1 (proporcional a imagem). Como a imagem nao
-    # e quadrada, convertemos para pixels antes de medir distancias, senao a escala fica torta.
     origem_x = (ombro_esq.x + ombro_dir.x) / 2 * largura
     origem_y = (ombro_esq.y + ombro_dir.y) / 2 * altura
     escala = np.hypot((ombro_esq.x - ombro_dir.x) * largura,
@@ -148,7 +115,6 @@ def extrair_coordenadas(res_maos, res_pose, largura, altura):
             coords = []
             for p in mao:
                 x, y = norm_xy(p)
-                # z ja e relativo ao pulso; so muda a escala
                 coords += [x, y, p.z * largura / escala]
             if lado == 'Left':
                 mao_esq = np.array(coords)
@@ -160,29 +126,47 @@ def extrair_coordenadas(res_maos, res_pose, largura, altura):
 
 
 def desenhar_maos(frame, res_maos):
-    """Desenha os pontos e as conexoes das maos detectadas sobre o frame."""
     if res_maos.hand_landmarks:
         altura, largura, _ = frame.shape
         for mao in res_maos.hand_landmarks:
-            # Converte coordenadas normalizadas (0 a 1) para pixels da imagem.
             pontos = [(int(p.x * largura), int(p.y * altura)) for p in mao]
-            # Mostra cada articulacao como ponto vermelho.
             for px, py in pontos:
                 cv2.circle(frame, (px, py), 4, (0, 0, 255), -1)
-            # Liga as articulacoes conforme a estrutura dos dedos e da palma.
             for ini, fim in CONEXOES_MAO:
                 cv2.line(frame, pontos[ini], pontos[fim], (0, 255, 0), 2)
 
 
 def desenhar_corpo(frame, res_pose):
-    """Desenha ombros (linha), nariz e cotovelos em azul, so para voce conferir se o corpo foi detectado."""
     if res_pose.pose_landmarks:
-        # Converte os pontos escolhidos do corpo para a escala em pixels da imagem.
         altura, largura, _ = frame.shape
         pose = res_pose.pose_landmarks[0]
         def px(i): return (int(pose[i].x * largura), int(pose[i].y * altura))
-        # A linha entre os ombros ajuda a visualizar a referencia usada na normalizacao.
         cv2.line(frame, px(11), px(12), (255, 128, 0), 2)
-        # Exibe nariz, ombros e cotovelos para conferir a deteccao da pose.
         for i in [0, 11, 12, 13, 14]:
             cv2.circle(frame, px(i), 6, (255, 128, 0), -1)
+
+
+# --- FUNÇÃO PRINCIPAL DE SUPORTE AO TRADUTOR E AO COLETOR ---
+_detector_global = None
+
+def extrair_landmarks(frame):
+    """
+    Função principal unificada que processa o frame, desenha os esqueletos
+    e extrai o vetor numérico normalizado de 132 features.
+    """
+    global _detector_global
+    if _detector_global is None:
+        _detector_global = Detector()
+
+    altura, largura, _ = frame.shape
+    res_maos, res_pose = _detector_global.processar(frame)
+
+    # Cria uma cópia do frame para desenhar as linhas e pontos visuais
+    imagem_anotada = frame.copy()
+    desenhar_maos(imagem_anotada, res_maos)
+    desenhar_corpo(imagem_anotada, res_pose)
+
+    # Extrai o vetor de coordenadas normalizadas
+    landmarks_vetor = extrair_coordenadas(res_maos, res_pose, largura, altura)
+
+    return landmarks_vetor, imagem_anotada
