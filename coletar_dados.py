@@ -34,10 +34,8 @@ def obter_pessoa():
 PESSOA = obter_pessoa()
 PASTA_DADOS = "dados_libras"
 # OBS:DEVEMOS CATALOGAR ESSES SINAIS LOGO
-ACOES = ['rindo', 'triste', 'vergonha', 'nojo', 'inveja',
-         'medo', 'feliz', 'confusao', 'nervoso', 'raiva',
-         'bravo', 'inimigo', 'odio', 'idiota', 'fingir',
-         'deboche', 'parado']
+ACOES = ['medo', 'amor', 'felicidade', 'inveja', 'tristeza',
+         'raiva', 'ansiedade', 'empatia', 'nojo', 'vergonha']
 # Com 10 repeticoes reais, o treinar_modelo.py multiplica para 40 automaticamente na memoria!
 NUM_SEQUENCIAS = 10       # quantas repeticoes de cada sinal ESTA pessoa vai gravar
 TAMANHO_SEQUENCIA = 30      # frames por repeticao (~1 segundo)
