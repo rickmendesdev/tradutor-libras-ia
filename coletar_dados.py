@@ -136,7 +136,8 @@ for acao in ACOES:
         indicador_mao(frame, res_maos)
         # tentativa de correção para problema de execução
 
-        texto(frame, f"Proximo sinal: {acao.upper()} ({feitas}/{NUM_SEQUENCIAS})", 30)
+        texto(
+            frame, f"Proximo sinal: {acao.upper()} ({feitas}/{NUM_SEQUENCIAS})", 30)
         texto(frame, "ESPACO = comeca | q = sair", 90)
 
         cv2.imshow(JANELA, frame)
@@ -145,8 +146,24 @@ for acao in ACOES:
 
         if tecla == ord(' '):
             break
-        elif tecla == ord('q'):
-            sair(cap, "Coleta encerrada pelo usuario")
+
+        elif tecla == ord('e'):
+            while True:
+                frame, res_maos, _ = ler_frame(cap, detector)
+                indicador_mao(frame, res_maos)
+
+                texto(frame, "EM PAUSA", 30, (0, 255, 255))
+                texto(frame, "E = retomar | Q = sair", 90, (255, 255, 255))
+
+                cv2.imshow(JANELA, frame)
+
+                tecla_pausa = cv2.waitKey(1) & 0xFF
+
+                if tecla_pausa == ord('e'):
+                    break
+
+                elif tecla_pausa == ord('q'):
+                    sair(cap, "Coleta encerrada pelo usuario.")
 
         # texto(
         #   frame,
@@ -191,7 +208,7 @@ for acao in ACOES:
 
         # Converte a lista em matriz; cada linha e um frame e cada coluna uma coordenada.
         sequencia = np.array(sequencia)               # formato: (30, 132)
-        
+
         # Descarta repeticoes em que muitas linhas estao zeradas por falta de deteccao do corpo.
         frames_invalidos = np.mean(~sequencia.any(axis=1))
         if frames_invalidos > MAX_FRAMES_INVALIDOS:
@@ -201,7 +218,8 @@ for acao in ACOES:
 
         # Descarta repeticoes de sinais com mao onde a mao quase nao apareceu no quadro.
         if acao not in ACOES_SEM_MAO:
-            frames_com_mao = np.mean(sequencia[:, :2 * N_VALORES_MAO].any(axis=1))
+            frames_com_mao = np.mean(
+                sequencia[:, :2 * N_VALORES_MAO].any(axis=1))
             if frames_com_mao < MIN_FRAMES_COM_MAO:
                 print(
                     f"Repeticao descartada (mao detectada em apenas {frames_com_mao:.0%} dos frames). Refazendo.")
