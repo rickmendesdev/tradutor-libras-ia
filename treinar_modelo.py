@@ -39,7 +39,7 @@ def carregar_dataset():
     # Sem esta pasta nao ha exemplos para montar o conjunto de treinamento.
     if not os.path.exists(PASTA_DADOS):
         raise SystemExit(
-            f"Erro: A pasta '{PASTA_DADOS}' nao existe. Grave os sinais primeiro!")
+            f"Erro: A pasta '{PASTA_DADOS}' nao existe. Grave os  primeiro!")
 
     # Detecta automaticamente quais pastas de sinais ja possuem gravacoes .npy
     pastas = sorted([

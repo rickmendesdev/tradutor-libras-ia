@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 from landmarks import extrair_landmarks
+from database import registrar_reconhecimento
 import time
 from collections import deque, Counter
 
@@ -81,6 +82,11 @@ while cap.isOpened():
         if sinal == 'parado':
             aceito = None
         elif sinal is not None and sinal != aceito:
+
+            # Registrar o reconhecimento no PostgreSQL
+            texto_voz = registrar_reconhecimento(sinal)
+
+        # Utilizar o texto retornado pelo banco
             resultado, resultado_conf = sinal.upper(), confianca
             aceito = sinal
             mostar_ate = time.monotonic() + 1.5
