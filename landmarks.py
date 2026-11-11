@@ -1,20 +1,19 @@
+
 """
-landmarks.py  -  MODULO COMPARTILHADO
-Tudo que transforma "imagem da camera" em "vetor de numeros" mora aqui.
-A coleta de dados e o reconhecimento em tempo real DEVEM importar daqui,
-para que o modelo veja exatamente o mesmo tipo de dado no treino e no uso real.
+landmarks.py - MÓDULO COMPARTILHADO (Modo IMAGE - Fluido e Preciso)
+"""
+"""
+landmarks.py - MÓDULO COMPARTILHADO (Modo IMAGE - Fluido e Preciso)
 """
 import os
-import time
 import urllib.request
-
 import cv2
 import numpy as np
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
-# --- MODELOS DO MEDIAPIPE (baixados automaticamente na 1a vez) ---
+# --- MODELOS DO MEDIAPIPE ---
 PASTA_MODELOS = "modelos"
 URLS_MODELOS = {
     "hand_landmarker.task": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
@@ -23,7 +22,7 @@ URLS_MODELOS = {
 
 # --- FORMATO DO VETOR DE CADA FRAME ---
 PONTOS_POSE = [0, 13, 14]
-N_VALORES_MAO = 21 * 3                         # 63 por mao (x, y, z)
+N_VALORES_MAO = 21 * 3  # 63 por mao (x, y, z)
 N_FEATURES = 2 * N_VALORES_MAO + len(PONTOS_POSE) * 2
 
 CONEXOES_MAO = [
@@ -41,49 +40,42 @@ def _ler_modelo(nome):
                 return f.read()
     os.makedirs(PASTA_MODELOS, exist_ok=True)
     destino = os.path.join(PASTA_MODELOS, nome)
-    print(f"Baixando {nome} (so na primeira vez)...")
+    print(f"Baixando {nome} (só na primeira vez)...")
     urllib.request.urlretrieve(URLS_MODELOS[nome], destino)
     with open(destino, "rb") as f:
         return f.read()
 
 
 class Detector:
-    """Roda MAOS + CORPO no mesmo frame, em modo VIDEO (rastreia entre frames)."""
+    """Roda MÃOS + CORPO no modo IMAGE (detecção frame a frame, imune a atrasos)."""
 
     def __init__(self):
         opcoes_maos = vision.HandLandmarkerOptions(
             base_options=python.BaseOptions(
                 model_asset_buffer=_ler_modelo("hand_landmarker.task")),
-            running_mode=vision.RunningMode.VIDEO,
+            running_mode=vision.RunningMode.IMAGE,
             num_hands=2,
-            min_hand_detection_confidence=0.6,
-            min_hand_presence_confidence=0.5,
-            min_tracking_confidence=0.5,
+            min_hand_detection_confidence=0.5,
+            min_hand_presence_confidence=0.4,
         )
         opcoes_pose = vision.PoseLandmarkerOptions(
             base_options=python.BaseOptions(
                 model_asset_buffer=_ler_modelo("pose_landmarker_lite.task")),
-            running_mode=vision.RunningMode.VIDEO,
+            running_mode=vision.RunningMode.IMAGE,
             num_poses=1,
             min_pose_detection_confidence=0.5,
             min_pose_presence_confidence=0.5,
-            min_tracking_confidence=0.5,
         )
         self.maos = vision.HandLandmarker.create_from_options(opcoes_maos)
         self.pose = vision.PoseLandmarker.create_from_options(opcoes_pose)
-        self._ultimo_ts = -1
 
     def processar(self, frame_bgr):
-        ts = int(time.monotonic() * 1000)
-        if ts <= self._ultimo_ts:
-            ts = self._ultimo_ts + 1
-        self._ultimo_ts = ts
-
+        """Converte o frame e detecta do zero em cada quadro."""
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
 
-        res_maos = self.maos.detect_for_video(mp_image, ts)
-        res_pose = self.pose.detect_for_video(mp_image, ts)
+        res_maos = self.maos.detect(mp_image)
+        res_pose = self.pose.detect(mp_image)
 
         return res_maos, res_pose
 
@@ -146,14 +138,10 @@ def desenhar_corpo(frame, res_pose):
             cv2.circle(frame, px(i), 6, (255, 128, 0), -1)
 
 
-# --- FUNÇÃO PRINCIPAL DE SUPORTE AO TRADUTOR E AO COLETOR ---
+# --- FUNÇÃO PRINCIPAL ---
 _detector_global = None
 
 def extrair_landmarks(frame):
-    """
-    Função principal unificada que processa o frame, desenha os esqueletos
-    e extrai o vetor numérico normalizado de 132 features.
-    """
     global _detector_global
     if _detector_global is None:
         _detector_global = Detector()
@@ -161,12 +149,9 @@ def extrair_landmarks(frame):
     altura, largura, _ = frame.shape
     res_maos, res_pose = _detector_global.processar(frame)
 
-    # Cria uma cópia do frame para desenhar as linhas e pontos visuais
     imagem_anotada = frame.copy()
     desenhar_maos(imagem_anotada, res_maos)
     desenhar_corpo(imagem_anotada, res_pose)
 
-    # Extrai o vetor de coordenadas normalizadas
     landmarks_vetor = extrair_coordenadas(res_maos, res_pose, largura, altura)
-
     return landmarks_vetor, imagem_anotada
