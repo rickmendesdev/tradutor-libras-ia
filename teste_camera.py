@@ -1,3 +1,4 @@
+from database import registrar_reconhecimento
 import time
 import cv2
 
@@ -21,6 +22,8 @@ if not cap.isOpened():
 
 fps = 0.0
 ultimo = time.monotonic()
+
+ultimo_sinal_registrado = None
 
 while cap.isOpened():
     sucesso, frame = cap.read()
