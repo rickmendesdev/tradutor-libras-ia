@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_libras
+    environment:
+      POSTGRES_DB: learning_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: sua_senha
+    ports:
+      - "5433:5432"  # Porta 5433 no teu PC ligada ao PostgreSQL do Docker
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
