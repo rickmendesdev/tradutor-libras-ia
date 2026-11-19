@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Gestta: tradutor de Libras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">  <!-- importação, checar depois -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="gestta.css">
+</head>
+
+<body>
+
+  <header>
+    <a href="#inicio">
+      <!-- Depois vai virar: <img src="assets/logo.png" alt="Logo do projeto"> -->
+      <span>[logo: duas mãos]</span>
+      <strong>Gestta</strong>
+    </a>
+
+    <!-- fazer um nav = menu. Cada <a href= leva até o elemento com id="nome" -->
+    <nav aria-label="Principal">
+      <a href="#inicio" aria-current="page">Início</a>
+      <a href="#sobre">Sobre</a>
+      <!-- link ainda não leva a lugar nenhum: "Aprenda Libras" fica para depois -->
+      <a href="#aprenda-libras">Aprenda Libras</a>
+      <a class="botao" href="#tradutor">Começar</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <!--  BLOCO 2: INICIO -->
+    <section id="inicio">
+      <div class="hero-texto">
+        <h1>Conectando mãos e <span>vozes.</span></h1>
+        <p>Traduza sinais em Libras para Português de forma simples e rápida!</p>
+        <a class="botao" href="#tradutor">Começar tradução</a>
+      </div>
+
+      <!-- não esquecer e substituir pela img  <img src="assets/maos.png" alt="Duas mãos fazendo sinais em Libras"> -->
+      <div class="hero-imagem">[ilustração: mãos fazendo sinais]</div>
+    </section>
+
+    <!-- BLOCO 3: TRADUTOR 
+        cartão branco com dois painéis: câmera à esquerda, tradução à direita. -->
+    <section id="tradutor">
+
+      <div class="painel">
+        <h2><span>[ícone de câmera]</span> Tradutor de Libras</h2>
+
+        <div class="video-caixa">
+          <!--onde a imgm da câmera vai aparecer (JavaScript liga isso depois) -->
+          <video id="video" playsinline muted></video>
+          <p id="video-vazio">[ícone de câmera] Sua câmera será ativada aqui</p>
+        </div>
+
+        <!-- id = endereço único que o JavaScript usa para achar este botão -->
+        <button id="btn-iniciar">Iniciar Tradução</button>
+      </div>
+
+      <div class="painel">
+        <h2><span>[ícone de tradução]</span> Tradução</h2>
+        <div id="saida">
+          <p>Faça um sinal em Libras...</p>
+        </div>
+      </div>
+
+      <!-- depois, neste bloco: botão Parar, Copiar, Limpar e mensagens de estado -->
+    </section>
+
+    <!--  BLOCO 4: SOBRE -->
+    <section id="sobre">
+      <div>
+        <h2>Sobre o Gestta</h2>
+        <p>Um projeto feito para promover a inclusão e facilitar a comunicação entre todos.</p>
+      </div>
+
+      <!-- <ul> = lista com marcadores; cada <li> é um item. -->
+      <ul>
+        <li><span>[ícone: aperto de mãos]</span> Mais inclusão</li>
+        <li><span>[ícone: raio]</span> Tecnologia acessível</li>
+        <li><span>[ícone: coração]</span> Comunicação sem barreiras</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <!--  BLOCO 5: RODAPÉ  -->
+  <footer>
+    <p><strong>Gestta</strong> © 2026 | Tecnologia que aproxima pessoas.</p>
+    <!-- Trocar o "#" pelos endereços reais da equipe. Os ícones entram depois. -->
+    <ul>
+      <li><a href="#" aria-label="GitHub do projeto">GitHub</a></li>
+      <li><a href="#" aria-label="Instagram do projeto">Instagram</a></li>
+      <li><a href="#" aria-label="YouTube do projeto">YouTube</a></li>
+    </ul>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

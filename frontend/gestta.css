@@ -1,0 +1,333 @@
+:root {
+  --azul-escuro: #0f2a6e;   /* textos e botão do topo */
+  --azul: #2f66d4;          /* destaques e botão do tradutor */
+  --azul-claro: #dde5fb;    /* caixa da tradução e formas de fundo */
+  --fundo: #f7f9fe;         /* fundo da página */
+  --branco: #ffffff;
+  --camera: #473f37;        /* caixa escura da câmera */
+  --rodape: #12295f;        /* fundo do rodapé */
+  --fonte: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+
+/* olhar planilha*/
+
+/* Faz largura e altura incluírem a borda e o espaço interno.*/
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;                       /* tira a margem padrão*/
+  font-family: var(--fonte);       /* usa uma das variáveis de cima */
+  font-size: 1.125rem;             /* rem = múltiplo do tamanho de letra do navegador (1rem = 16px) */
+  line-height: 1.6;                /* espaço entre as linhas */
+  color: var(--azul-escuro);
+  background: var(--fundo);
+}
+
+h1, h2, h3 {
+  margin: 0;
+  line-height: 1.15;
+  font-weight: 800;
+}
+h1 { font-size: clamp(2.5rem, 6vw, 4rem); }  /* clamp(mínimo, ideal, máximo): cresce com a tela, dentro de limites */
+h2 { font-size: 1.5rem; }
+
+p { margin: 0 0 1rem; }
+
+/* Tira os marcadores das listas  */
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+a { color: var(--azul); }
+
+.botao,
+button {
+  display: inline-block;
+  font: inherit;                    /* usa a mesma fonte do resto da página */
+  font-weight: 700;
+  color: var(--branco);
+  background: var(--azul);
+  border: 0;
+  border-radius: 999px;             /* deixa as pontas totalmente redondas */
+  padding: 0.75rem 1.75rem;         /* espaço interno: cima/baixo e lados */
+  min-height: 2.75rem;              /* tamanho mínimo confortável para o toque no celular */
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* o botão do topo e o do início são azul-escuros. */
+.botao {
+  background: var(--azul-escuro);
+}
+
+.botao:hover,
+button:hover {
+  filter: brightness(1.15);         /* clareia um pouco quando o mouse passa por cima */
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Contorno visível quando se navega pelo teclado - acessibilidade. */
+:focus-visible {
+  outline: 3px solid var(--azul);
+  outline-offset: 3px;
+}
+
+/*  3: TOPO E INÍCIO */
+
+
+/* 4. LARGURA DO CONTEÚDO
+   filho direto: só as <section> que estão dentro de <main>.
+   min(1100px, 100% - 2rem) = nunca passa de 1100px e, em telas pequenas,
+   deixa 1rem de folga de cada lado.*/
+main > section {
+  width: min(1100px, 100% - 2rem);
+  margin-inline: auto;
+}
+
+
+/* 5. TOPO */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem clamp(1rem, 5vw, 3rem);
+  border-bottom: 1px solid var(--azul-claro);   
+}
+
+/* Logo + nome */
+header > a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--azul-escuro);
+  text-decoration: none;
+}
+header > a strong {
+  font-size: 2rem;
+  font-weight: 800;
+}
+header > a span {              /* some quando a imagem entrar no passo 6 */
+  font-size: 0.85rem;
+  color: var(--azul);
+}
+
+/* Menu */
+nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(1rem, 3vw, 2.5rem);
+}
+
+nav a:not(.botao) {
+  color: var(--azul-escuro);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 0.5rem 0;
+  border-bottom: 3px solid transparent;
+}
+nav a:not(.botao):hover {
+  border-bottom-color: var(--azul);
+}
+/* "Início" ganha o sublinhado azul */
+nav a[aria-current="page"] {
+  border-bottom-color: var(--azul);
+}
+
+
+/* 6. INÍCIO */
+#inicio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 2rem;
+  padding-block: clamp(2rem, 6vw, 4rem);
+}
+
+/* a palavra "vozes." fica azul */
+.hero-texto h1 span {
+  color: var(--azul);
+}
+
+.hero-texto p {
+  font-size: 1.35rem;
+  max-width: 26rem;
+  margin: 1.25rem 0 1.75rem;
+}
+
+/* "mancha" */
+.hero-imagem {
+  display: grid;
+  place-items: center;
+  min-height: 18rem;
+  padding: 1rem;
+  text-align: center;
+  color: var(--azul);
+  background: var(--azul-claro);
+  border-radius: 60% 40% 55% 45% / 50% 55% 45% 50%;
+}
+
+
+/* 7. CARTÃO (#tradutor)*/
+#tradutor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  background: var(--branco);
+  border: 1px solid var(--azul-claro);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px rgba(15, 42, 110, 0.08);
+}
+
+.painel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 1.5rem;
+}
+
+/* linha vertical de separação à esquerda. */
+.painel + .painel {
+  border-left: 1px solid var(--azul-escuro);
+}
+
+.painel h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.painel h2 span {              /* REVISAR marca [ícone]: some quando os ícones entrarem no passo 6 */
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--azul);
+}
+
+.painel button {
+  align-self: center;
+}
+
+/* 8. CAIXA DA CÂMERA grid + place centralizar algo no meio da caixa. */
+.video-caixa {
+  display: grid;
+  place-items: center;
+  min-height: 11rem;
+  background: var(--camera);
+  color: var(--branco);
+  border-radius: 1rem;
+  overflow: hidden;
+  text-align: center;
+}
+.video-caixa p {
+  margin: 0;
+  padding: 1rem;
+}
+
+/* vídeo - JavaScript adiciona a class "ligado" para mostrá-lo.
+   scaleX(-1) vira a imagem como um espelho*/
+.video-caixa video {
+  display: none;
+  width: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.video-caixa video.ligado {
+  display: block;
+}
+
+/* 9 CAIXA DA TRADUÇÃO */
+#saida {
+  flex: 1;
+  min-height: 11rem;
+  padding: 1.25rem;
+  background: var(--azul-claro);
+  border-radius: 1rem;
+  font-size: 1.25rem;
+  text-align: center;
+}
+#saida p {
+  margin: 0;
+}
+
+/* 10: SOBRE E RODAPÉ */
+
+#sobre {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr;
+  align-items: center;
+  gap: 2rem;
+  padding-block: 2rem 3rem;
+}
+#sobre h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+#sobre p {
+  margin: 0;
+  max-width: 24rem;
+}
+
+#sobre ul {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+#sobre li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-weight: 600;
+}
+/* item que vem depois de outro ganha a linha à esquerda */
+#sobre li + li {
+  border-left: 1px solid var(--azul-claro);
+}
+#sobre li span {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--azul);
+}
+
+/* 11. RODAPÉ (<footer>)
+   Faixa azul-escura. */
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.5rem clamp(1rem, 5vw, 3rem);
+  background: var(--rodape);
+  color: var(--branco);
+}
+footer p {
+  margin: 0;
+}
+footer ul {
+  display: flex;
+  gap: 1.25rem;
+}
+footer a {
+  color: var(--branco);
+  text-decoration: none;
+}
+footer a:hover {
+  text-decoration: underline;
+}
+
+footer :focus-visible {
+  outline-color: var(--branco);
+}

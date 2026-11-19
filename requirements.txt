@@ -4,3 +4,8 @@ numpy
 tensorflow
 matplotlib
 scikit-learn
+fastapi
+uvicorn[standard]
+websockets
+psycopg[binary]
+python-dotenv
