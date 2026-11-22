@@ -29,7 +29,8 @@ ACOES_PATH = os.path.join(BASE_DIR, "modelos", "acoes.json")
 
 # Carregar modelo e ações ao iniciar o servidor
 if not os.path.exists(MODELO_PATH) or not os.path.exists(ACOES_PATH):
-    raise RuntimeError("Modelo treinado ou arquivo acoes.json não encontrados na pasta 'modelos/'!")
+    raise RuntimeError(
+        "Modelo treinado ou arquivo acoes.json não encontrados na pasta 'modelos/'!")
 
 print("Carregando modelo de IA no servidor...")
 model = load_model(MODELO_PATH)
@@ -49,22 +50,23 @@ def home():
 @app.websocket("/ws/traduzir")
 async def websocket_tradutor(websocket: WebSocket):
     await websocket.accept()
-    
+
     # Estado da sessão para este cliente específico
     sequencia = []
     historico_previsoes = deque(maxlen=5)
     ultimo_sinal_registrado = None
+    ultimo_texto_voz = ""
     limiar_confianca = 0.75
 
     try:
         while True:
             # Recebe os bytes da imagem (frame) enviados pelo front-end via WebSocket
             data = await websocket.receive_bytes()
-            
+
             # Converte os bytes recebidos em um array NumPy para o OpenCV
             nparr = np.frombuffer(data, np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
+
             if frame is None:
                 continue
 
@@ -72,17 +74,19 @@ async def websocket_tradutor(websocket: WebSocket):
             landmarks, _ = extrair_landmarks(frame)
 
             sequencia.append(landmarks)
-            sequencia = sequencia[-30:]  # Mantém a janela deslizante de 30 frames
+            # Mantém a janela deslizante de 30 frames
+            sequencia = sequencia[-30:]
 
             resposta_json = {
                 "sinal": "Aguardando sinal...",
                 "confianca": 0.0,
-                "texto_voz": ""
+                "texto_voz": "",
+                "novo_sinal": False
             }
 
             if len(sequencia) == 30:
                 dados_entrada = np.expand_dims(np.array(sequencia), axis=0)
-                
+
                 # Inferência do modelo
                 previsoes = model(dados_entrada, training=False).numpy()[0]
                 classe_predita = int(np.argmax(previsoes))
@@ -93,7 +97,25 @@ async def websocket_tradutor(websocket: WebSocket):
                 else:
                     historico_previsoes.append(-1)
 
-                validas = [c for c in historico_previsoes if c != -1]
+                # Conta quantas previsões indicaram ausência de sinal confiável
+                quantidade_neutras = sum(
+                    classe == -1 for classe in historico_previsoes
+                )
+
+                # Três previsões inválidas liberam um novo gesto
+                validas = []
+
+                if quantidade_neutras >= 3:
+                    ultimo_sinal_registrado = None
+                    ultimo_texto_voz = ""
+                    historico_previsoes.clear()
+
+                else:
+                    # Remove as previsões inválidas para relizar a votação
+                    validas = [
+                        classe for classe in historico_previsoes
+                        if classe != -1
+                    ]
 
                 if validas:
                     mais_comum, qtd = Counter(validas).most_common(1)[0]
@@ -102,23 +124,31 @@ async def websocket_tradutor(websocket: WebSocket):
                         sinal = ACOES[mais_comum]
                         confianca_exibida = float(previsoes[mais_comum])
 
-                        if sinal == "parado":
-                            ultimo_sinal_registrado = None
-                        else:
-                            if sinal != ultimo_sinal_registrado:
-                                texto_voz = registrar_reconhecimento(sinal)
-                                ultimo_sinal_registrado = sinal
+                        novo_sinal = sinal != ultimo_sinal_registrado
+
+                        if novo_sinal:
+                            texto_voz = registrar_reconhecimento(sinal)
+                            if texto_voz:
+                                ultimo_texto_voz = texto_voz
                             else:
-                                texto_voz = None
+                                ultimo_texto_voz = f"Sinal identificado: {sinal}."
+
+                            ultimo_sinal_registrado = sinal
 
                         resposta_json = {
                             "sinal": sinal.upper(),
                             "confianca": round(confianca_exibida * 100, 1),
-                            "texto_voz": sinal.upper()
+                            "texto_voz": ultimo_texto_voz,
+                            "novo_sinal": novo_sinal
                         }
 
             # Envia o resultado de volta para o JavaScript no navegador
-            await websocket.send_json(resposta_json)
+            try:
+                await websocket.send_json(resposta_json)
+
+            except (WebSocketDisconnect, RuntimeError) as erro:
+                print(f"Conexão WebSocket encerrada durante o envio: {erro}")
+                break
 
     except WebSocketDisconnect:
         print("Cliente desconectado do WebSocket.")

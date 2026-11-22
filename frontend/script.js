@@ -21,6 +21,7 @@ let loopEnvio = null;
 let traducaoAtiva = false;
 let encerramentoIntencional = false;
 
+
 function definirSaida(html, estado = "normal") {
   if (!saidaEl) return;
   saidaEl.dataset.estado = estado;
@@ -153,7 +154,6 @@ function renderizarTraducao(payload) {
       ? ` (${payload.confianca.toFixed(1)}%)`
       : "";
   const textoVoz = payload?.texto_voz ? `<small>${escaparHtml(payload.texto_voz)}</small>` : "";
-
   if (
     payload?.novo_sinal === true &&
     typeof payload?.texto_voz === "string" &&
@@ -161,6 +161,7 @@ function renderizarTraducao(payload) {
   ) {
     falarTexto(payload.texto_voz.trim());
   }
+
 
   definirSaida(
     `
