@@ -4,6 +4,7 @@ const LARGURA_ENVIO = 640;
 const QUALIDADE_JPEG = 0.7;
 
 const btnIniciar = document.getElementById("btn-iniciar");
+const btnParar = document.getElementById("btn-parar");
 const videoEl = document.getElementById("video");
 const videoVazioEl = document.getElementById("video-vazio");
 const saidaEl = document.getElementById("saida");
@@ -21,6 +22,7 @@ let traducaoAtiva = false;
 let encerramentoIntencional = false;
 
 function definirSaida(html, estado = "normal") {
+  if (!saidaEl) return;
   saidaEl.dataset.estado = estado;
   saidaEl.innerHTML = html;
 }
@@ -31,9 +33,32 @@ function escaparHtml(texto) {
   return div.innerHTML;
 }
 
+function falarTexto(texto) {
+  if (!("speechSynthesis" in window)) {
+    console.warn("Este navegador não suporta síntese de voz.");
+    return;
+  }
+
+  const fala = new SpeechSynthesisUtterance(texto);
+  fala.lang = "pt-BR";
+  fala.rate = 1;
+  fala.pitch = 1;
+  fala.volume = 1;
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(fala);
+}
+
 function atualizarBotao(ativo) {
-  btnIniciar.textContent = ativo ? "Parar Tradução" : "Iniciar Tradução";
-  btnIniciar.classList.toggle("ativo", ativo);
+  if (btnIniciar) {
+    btnIniciar.disabled = ativo;
+    btnIniciar.textContent = ativo ? "Traduzindo..." : "Iniciar Tradução";
+    btnIniciar.classList.toggle("ativo", ativo);
+  }
+
+  if (btnParar) {
+    btnParar.disabled = !ativo;
+  }
 }
 
 async function iniciarCamera() {
@@ -72,9 +97,11 @@ function pararCamera() {
     stream = null;
   }
 
-  videoEl.pause();
-  videoEl.srcObject = null;
-  videoEl.classList.remove("ligado");
+  if (videoEl) {
+    videoEl.pause();
+    videoEl.srcObject = null;
+    videoEl.classList.remove("ligado");
+  }
 
   if (videoVazioEl) {
     videoVazioEl.style.display = "";
@@ -94,7 +121,7 @@ function iniciarLoopFrames() {
       return;
     }
 
-    if (videoEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    if (!videoEl || videoEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
       return;
     }
 
@@ -126,6 +153,14 @@ function renderizarTraducao(payload) {
       ? ` (${payload.confianca.toFixed(1)}%)`
       : "";
   const textoVoz = payload?.texto_voz ? `<small>${escaparHtml(payload.texto_voz)}</small>` : "";
+
+  if (
+    payload?.novo_sinal === true &&
+    typeof payload?.texto_voz === "string" &&
+    payload.texto_voz.trim()
+  ) {
+    falarTexto(payload.texto_voz.trim());
+  }
 
   definirSaida(
     `
@@ -183,7 +218,8 @@ function conectarWebSocket() {
 async function iniciarTraducao() {
   if (traducaoAtiva) return;
 
-  btnIniciar.disabled = true;
+  if (btnIniciar) btnIniciar.disabled = true;
+  if (btnParar) btnParar.disabled = true;
   definirSaida("<p>Ativando câmera e conectando ao servidor...</p>", "conectando");
 
   try {
@@ -197,7 +233,9 @@ async function iniciarTraducao() {
     console.error("Falha ao iniciar tradução:", erro);
     pararTraducao("erro", erro.message || "Erro ao acessar a câmera ou o servidor.");
   } finally {
-    btnIniciar.disabled = false;
+    if (!traducaoAtiva && btnIniciar) {
+      btnIniciar.disabled = false;
+    }
   }
 }
 
@@ -205,6 +243,10 @@ function pararTraducao(tipo = "normal", mensagemCustomizada = "") {
   encerramentoIntencional = true;
   traducaoAtiva = false;
   pararLoopFrames();
+
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
 
   if (socket) {
     socket.onclose = null;
@@ -225,13 +267,21 @@ function pararTraducao(tipo = "normal", mensagemCustomizada = "") {
   }
 }
 
-btnIniciar.addEventListener("click", () => {
-  if (traducaoAtiva) {
-    pararTraducao("normal");
-  } else {
-    iniciarTraducao();
-  }
-});
+if (btnIniciar) {
+  btnIniciar.addEventListener("click", () => {
+    if (!traducaoAtiva) {
+      iniciarTraducao();
+    }
+  });
+}
+
+if (btnParar) {
+  btnParar.addEventListener("click", () => {
+    if (traducaoAtiva) {
+      pararTraducao("normal");
+    }
+  });
+}
 
 // Garante liberação da câmera e do socket ao fechar/recarregar a aba
 window.addEventListener("beforeunload", () => {

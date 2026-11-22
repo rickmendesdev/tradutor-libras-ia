@@ -3,102 +3,137 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
-  <title>Gestta: tradutor de Libras</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">  <!-- importação, checar depois -->
+  <meta name="color-scheme" content="light">
+  <title>Gestta — Tradutor de Libras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="gestta.css">
 </head>
 
 <body>
 
   <header>
-    <a href="#inicio">
-      <!-- Depois vai virar: <img src="assets/logo.png" alt="Logo do projeto"> -->
-      <span>[logo: duas mãos]</span>
+    <a href="gestta.html" class="logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v0"/>
+        <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
+        <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
+        <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+      </svg>
       <strong>Gestta</strong>
     </a>
 
-    <!-- fazer um nav = menu. Cada <a href= leva até o elemento com id="nome" -->
     <nav aria-label="Principal">
-      <a href="#inicio" aria-current="page">Início</a>
-      <a href="#sobre">Sobre</a>
-      <!-- link ainda não leva a lugar nenhum: "Aprenda Libras" fica para depois -->
-      <a href="#aprenda-libras">Aprenda Libras</a>
-      <a class="botao" href="#tradutor">Começar</a>
+      <a href="gestta.html" aria-current="page">Início</a>
+      <a href="sobre.html">Sobre</a>
+      <a class="botao" href="tradutor.html">Começar</a>
     </nav>
   </header>
 
   <main>
 
-    <!--  BLOCO 2: INICIO -->
+    <!-- HERO -->
     <section id="inicio">
       <div class="hero-texto">
         <h1>Conectando mãos e <span>vozes.</span></h1>
-        <p>Traduza sinais em Libras para Português de forma simples e rápida!</p>
-        <a class="botao" href="#tradutor">Começar tradução</a>
+        <p>Traduza sinais em Libras para Português em tempo real usando apenas a câmera do seu computador.</p>
+        <a class="botao" href="tradutor.html">Começar tradução</a>
       </div>
 
-      <!-- não esquecer e substituir pela img  <img src="assets/maos.png" alt="Duas mãos fazendo sinais em Libras"> -->
-      <div class="hero-imagem">[ilustração: mãos fazendo sinais]</div>
+      <div class="hero-imagem" aria-hidden="true">
+        <svg width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 12h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 14"/>
+          <path d="m7 18 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/>
+          <path d="m2 13 6 6"/>
+        </svg>
+      </div>
     </section>
 
-    <!-- BLOCO 3: TRADUTOR 
-        cartão branco com dois painéis: câmera à esquerda, tradução à direita. -->
-    <section id="tradutor">
-
-      <div class="painel">
-        <h2><span>[ícone de câmera]</span> Tradutor de Libras</h2>
-
-        <div class="video-caixa">
-          <!--onde a imgm da câmera vai aparecer (JavaScript liga isso depois) -->
-          <video id="video" playsinline muted></video>
-          <p id="video-vazio">[ícone de câmera] Sua câmera será ativada aqui</p>
-        </div>
-
-        <!-- id = endereço único que o JavaScript usa para achar este botão -->
-        <button id="btn-iniciar">Iniciar Tradução</button>
+    <!-- COMO FUNCIONA -->
+    <section class="bloco-secao">
+      <div class="secao-cabecalho">
+        <h2>Como funciona</h2>
+        <p>Três passos simples para iniciar a tradução em tempo real.</p>
       </div>
 
-      <div class="painel">
-        <h2><span>[ícone de tradução]</span> Tradução</h2>
-        <div id="saida">
-          <p>Faça um sinal em Libras...</p>
-        </div>
-      </div>
+      <div class="grade-tres">
+        <article class="card-info">
+          <div class="icone-circulo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+              <circle cx="12" cy="13" r="3"/>
+            </svg>
+          </div>
+          <h3>1. Ative a câmera</h3>
+          <p>Acesse a tela do tradutor e permita o uso da webcam no navegador.</p>
+        </article>
 
-      <!-- depois, neste bloco: botão Parar, Copiar, Limpar e mensagens de estado -->
+        <article class="card-info">
+          <div class="icone-circulo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v0"/>
+              <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
+              <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
+              <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+            </svg>
+          </div>
+          <h3>2. Faça o sinal</h3>
+          <p>Posicione-se em um local iluminado mantendo mãos e tronco visíveis.</p>
+        </article>
+
+        <article class="card-info">
+          <div class="icone-circulo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m5 8 6 6"/>
+              <path d="m4 14 6-6 2-3"/>
+              <path d="M2 5h12"/>
+              <path d="M7 2h1"/>
+              <path d="m22 22-5-10-5 10"/>
+              <path d="M14 18h6"/>
+            </svg>
+          </div>
+          <h3>3. Veja a tradução</h3>
+          <p>O modelo identifica o movimento e exibe a palavra correspondente na tela.</p>
+        </article>
+      </div>
     </section>
 
-    <!--  BLOCO 4: SOBRE -->
-    <section id="sobre">
-      <div>
-        <h2>Sobre o Gestta</h2>
-        <p>Um projeto feito para promover a inclusão e facilitar a comunicação entre todos.</p>
+    <!-- GESTOS DISPONÍVEIS -->
+    <section class="bloco-secao">
+      <div class="secao-cabecalho">
+        <h2>Gestos disponíveis no modelo</h2>
+        <p>Sinais já treinados e prontos para reconhecimento na versão atual:</p>
       </div>
 
-      <!-- <ul> = lista com marcadores; cada <li> é um item. -->
-      <ul>
-        <li><span>[ícone: aperto de mãos]</span> Mais inclusão</li>
-        <li><span>[ícone: raio]</span> Tecnologia acessível</li>
-        <li><span>[ícone: coração]</span> Comunicação sem barreiras</li>
+      <!-- Atualize os itens abaixo conforme as ações salvas no seu acoes.json -->
+      <ul class="lista-gestos">
+        <li class="badge-gesto">Amor</li>
+        <li class="badge-gesto">Felicidade</li>
+        <li class="badge-gesto">Medo</li>
+        <li class="badge-gesto">Inveja</li>
+        <li class="badge-gesto">Tristeza</li>
+        <li class="badge-gesto">Raiva</li>
+        <li class="badge-gesto">Vergonha</li>
+        <li class="badge-gesto">Ansiedade</li>
+        <li class="badge-gesto">Empatia</li>
+        <li class="badge-gesto">Nojo</li>
       </ul>
+
+      <div class="chamada-centro">
+        <a class="botao" href="tradutor.html">Testar agora no tradutor</a>
+      </div>
     </section>
 
   </main>
 
-  <!--  BLOCO 5: RODAPÉ  -->
   <footer>
     <p><strong>Gestta</strong> © 2026 | Tecnologia que aproxima pessoas.</p>
-    <!-- Trocar o "#" pelos endereços reais da equipe. Os ícones entram depois. -->
     <ul>
-      <li><a href="#" aria-label="GitHub do projeto">GitHub</a></li>
-      <li><a href="#" aria-label="Instagram do projeto">Instagram</a></li>
-      <li><a href="#" aria-label="YouTube do projeto">YouTube</a></li>
+      <li><a href="https://github.com/rickmendesdev/tradutor-libras-ia.git" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+      <li><a href="sobre.html">Sobre o projeto</a></li>
     </ul>
   </footer>
 
-  <script src="script.js"></script>
 </body>
 </html>
