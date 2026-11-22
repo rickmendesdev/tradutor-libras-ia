@@ -20,6 +20,7 @@ let loopEnvio = null;
 let traducaoAtiva = false;
 let encerramentoIntencional = false;
 
+
 function definirSaida(html, estado = "normal") {
   saidaEl.dataset.estado = estado;
   saidaEl.innerHTML = html;
@@ -29,6 +30,23 @@ function escaparHtml(texto) {
   const div = document.createElement("div");
   div.textContent = String(texto ?? "");
   return div.innerHTML;
+}
+
+function falarTexto(texto){
+  if(!("speechSynthesis" in window)){
+    console.warn("Este navegador não suporta síntese de voz.");
+    return;
+  }
+
+  const fala = new SpeechSynthesisUtterance(texto);
+
+  fala.lang = "pt-BR";
+  fala.rate = 1;
+  fala.pitch = 1;
+  fala.volume = 1;
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(fala);
 }
 
 function atualizarBotao(ativo) {
@@ -126,6 +144,13 @@ function renderizarTraducao(payload) {
       ? ` (${payload.confianca.toFixed(1)}%)`
       : "";
   const textoVoz = payload?.texto_voz ? `<small>${escaparHtml(payload.texto_voz)}</small>` : "";
+  if (
+    payload?.novo_sinal === true &&
+    typeof payload?.texto_voz === "string" &&
+    payload.texto_voz.trim()
+  ) {
+    falarTexto(payload.texto_voz.trim());
+  }
 
   definirSaida(
     `
@@ -205,6 +230,8 @@ function pararTraducao(tipo = "normal", mensagemCustomizada = "") {
   encerramentoIntencional = true;
   traducaoAtiva = false;
   pararLoopFrames();
+
+  window.speechSynthesis.cancel();
 
   if (socket) {
     socket.onclose = null;
