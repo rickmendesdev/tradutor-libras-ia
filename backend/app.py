@@ -1,5 +1,7 @@
 import os
 import json
+import time
+import asyncio
 import cv2
 import numpy as np
 from collections import deque, Counter
@@ -41,6 +43,19 @@ with open(ACOES_PATH, "r", encoding="utf-8") as f:
 print(f"Ações carregadas: {ACOES}")
 
 
+def _decodificar_e_extrair(data: bytes):
+    nparr = np.frombuffer(data, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if frame is None:
+        return None
+    landmarks, _ = extrair_landmarks(frame, desenhar=False)
+    return landmarks
+
+
+def _inferir_modelo(dados_entrada: np.ndarray):
+    return model(dados_entrada, training=False).numpy()[0]
+
+
 @app.get("/")
 def home():
     return {"status": "API do Tradutor de Libras está ativa e operacional!"}
@@ -60,18 +75,17 @@ async def websocket_tradutor(websocket: WebSocket):
 
     try:
         while True:
+            t_inicio_frame = time.perf_counter()
+
             # Recebe os bytes da imagem (frame) enviados pelo front-end via WebSocket
             data = await websocket.receive_bytes()
 
-            # Converte os bytes recebidos em um array NumPy para o OpenCV
-            nparr = np.frombuffer(data, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            t_decode_lm_0 = time.perf_counter()
+            landmarks = await asyncio.to_thread(_decodificar_e_extrair, data)
+            t_decode_lm_1 = time.perf_counter()
 
-            if frame is None:
+            if landmarks is None:
                 continue
-
-            # Extrai os landmarks utilizando o módulo landmarks.py
-            landmarks, _ = extrair_landmarks(frame)
 
             sequencia.append(landmarks)
             # Mantém a janela deslizante de 30 frames
@@ -84,11 +98,17 @@ async def websocket_tradutor(websocket: WebSocket):
                 "novo_sinal": False
             }
 
+            tempo_modelo_ms = 0.0
+
             if len(sequencia) == 30:
                 dados_entrada = np.expand_dims(np.array(sequencia), axis=0)
 
                 # Inferência do modelo
-                previsoes = model(dados_entrada, training=False).numpy()[0]
+                t_mod_0 = time.perf_counter()
+                previsoes = await asyncio.to_thread(_inferir_modelo, dados_entrada)
+                t_mod_1 = time.perf_counter()
+                tempo_modelo_ms = (t_mod_1 - t_mod_0) * 1000
+
                 classe_predita = int(np.argmax(previsoes))
                 confianca = float(previsoes[classe_predita])
 
@@ -109,9 +129,8 @@ async def websocket_tradutor(websocket: WebSocket):
                     ultimo_sinal_registrado = None
                     ultimo_texto_voz = ""
                     historico_previsoes.clear()
-
                 else:
-                    # Remove as previsões inválidas para relizar a votação
+                    # Remove as previsões inválidas para realizar a votação
                     validas = [
                         classe for classe in historico_previsoes
                         if classe != -1
@@ -127,7 +146,9 @@ async def websocket_tradutor(websocket: WebSocket):
                         novo_sinal = sinal != ultimo_sinal_registrado
 
                         if novo_sinal:
-                            texto_voz = registrar_reconhecimento(sinal)
+                            texto_voz = await asyncio.to_thread(
+                                registrar_reconhecimento, sinal
+                            )
                             if texto_voz:
                                 ultimo_texto_voz = texto_voz
                             else:
@@ -149,6 +170,15 @@ async def websocket_tradutor(websocket: WebSocket):
             except (WebSocketDisconnect, RuntimeError) as erro:
                 print(f"Conexão WebSocket encerrada durante o envio: {erro}")
                 break
+
+            tempo_decode_lm_ms = (t_decode_lm_1 - t_decode_lm_0) * 1000
+            tempo_total_ms = (time.perf_counter() - t_inicio_frame) * 1000
+            print(
+                f"[PERF] decode+landmarks: {tempo_decode_lm_ms:.1f} ms | "
+                f"modelo: {tempo_modelo_ms:.1f} ms | "
+                f"total_frame: {tempo_total_ms:.1f} ms | "
+                f"seq: {len(sequencia)}/30"
+            )
 
     except WebSocketDisconnect:
         print("Cliente desconectado do WebSocket.")

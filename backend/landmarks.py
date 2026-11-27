@@ -1,7 +1,3 @@
-
-"""
-landmarks.py - MÓDULO COMPARTILHADO (Modo IMAGE - Fluido e Preciso)
-"""
 """
 landmarks.py - MÓDULO COMPARTILHADO (Modo IMAGE - Fluido e Preciso)
 """
@@ -141,7 +137,8 @@ def desenhar_corpo(frame, res_pose):
 # --- FUNÇÃO PRINCIPAL ---
 _detector_global = None
 
-def extrair_landmarks(frame):
+
+def extrair_landmarks(frame, desenhar=False):
     global _detector_global
     if _detector_global is None:
         _detector_global = Detector()
@@ -149,9 +146,11 @@ def extrair_landmarks(frame):
     altura, largura, _ = frame.shape
     res_maos, res_pose = _detector_global.processar(frame)
 
-    imagem_anotada = frame.copy()
-    desenhar_maos(imagem_anotada, res_maos)
-    desenhar_corpo(imagem_anotada, res_pose)
+    imagem_anotada = None
+    if desenhar:
+        imagem_anotada = frame.copy()
+        desenhar_maos(imagem_anotada, res_maos)
+        desenhar_corpo(imagem_anotada, res_pose)
 
     landmarks_vetor = extrair_coordenadas(res_maos, res_pose, largura, altura)
     return landmarks_vetor, imagem_anotada

@@ -1,5 +1,5 @@
 const WS_URL = "ws://127.0.0.1:8000/ws/traduzir";
-const INTERVALO_MS = 100; // ~10 frames/s para alimentar a janela de 30 frames sem sobrecarregar
+const INTERVALO_MS = 100; // Ritmo máximo de verificação para alimentar a janela de 30 frames
 const LARGURA_ENVIO = 640;
 const QUALIDADE_JPEG = 0.7;
 
@@ -20,6 +20,8 @@ let socket = null;
 let loopEnvio = null;
 let traducaoAtiva = false;
 let encerramentoIntencional = false;
+let aguardandoResposta = false;
+let tempoUltimoEnvio = 0;
 
 
 function definirSaida(html, estado = "normal") {
@@ -109,34 +111,49 @@ function pararCamera() {
   }
 }
 
+function enviarProximoFrame() {
+  if (!traducaoAtiva || !socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  // Libera a trava de segurança se demorar mais de 2s sem resposta
+  if (aguardandoResposta && performance.now() - tempoUltimoEnvio > 2000) {
+    aguardandoResposta = false;
+  }
+
+  if (aguardandoResposta || socket.bufferedAmount > 256 * 1024) {
+    return;
+  }
+
+  if (!videoEl || videoEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    return;
+  }
+
+  aguardandoResposta = true;
+  tempoUltimoEnvio = performance.now();
+
+  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+  canvas.toBlob(
+    (blob) => {
+      if (blob && socket && socket.readyState === WebSocket.OPEN && traducaoAtiva) {
+        socket.send(blob);
+      } else {
+        aguardandoResposta = false;
+      }
+    },
+    "image/jpeg",
+    QUALIDADE_JPEG
+  );
+}
+
 function iniciarLoopFrames() {
   pararLoopFrames();
+  aguardandoResposta = false;
+  enviarProximoFrame();
 
   loopEnvio = setInterval(() => {
-    if (!traducaoAtiva || !socket || socket.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    // Só envia um novo frame se o buffer de saída do WebSocket não estiver congestionado
-    if (socket.bufferedAmount > 256 * 1024) {
-      return;
-    }
-
-    if (!videoEl || videoEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      return;
-    }
-
-    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob(
-      (blob) => {
-        if (blob && socket && socket.readyState === WebSocket.OPEN && traducaoAtiva) {
-          socket.send(blob);
-        }
-      },
-      "image/jpeg",
-      QUALIDADE_JPEG
-    );
+    enviarProximoFrame();
   }, INTERVALO_MS);
 }
 
@@ -162,7 +179,6 @@ function renderizarTraducao(payload) {
     falarTexto(payload.texto_voz.trim());
   }
 
-
   definirSaida(
     `
       <p><strong>${escaparHtml(sinal)}${escaparHtml(confianca)}</strong></p>
@@ -186,12 +202,14 @@ function conectarWebSocket() {
     };
 
     ws.onmessage = (event) => {
+      aguardandoResposta = false;
       try {
         const dados = JSON.parse(event.data);
         renderizarTraducao(dados);
       } catch (err) {
         console.error("Erro ao interpretar resposta do servidor:", err);
       }
+      enviarProximoFrame();
     };
 
     ws.onerror = () => {
@@ -201,6 +219,7 @@ function conectarWebSocket() {
     };
 
     ws.onclose = (event) => {
+      aguardandoResposta = false;
       pararLoopFrames();
 
       if (!encerramentoIntencional && traducaoAtiva) {
@@ -243,6 +262,7 @@ async function iniciarTraducao() {
 function pararTraducao(tipo = "normal", mensagemCustomizada = "") {
   encerramentoIntencional = true;
   traducaoAtiva = false;
+  aguardandoResposta = false;
   pararLoopFrames();
 
   if ("speechSynthesis" in window) {
